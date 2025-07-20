@@ -1,0 +1,145 @@
+<?php
+include 'db.php';
+session_start();
+
+if (!isset($_SESSION['usuario']) || $_SESSION['usuario']['rol_id'] != 2) {
+    header('Location: index.php');
+    exit;
+}
+
+$msg = '';
+
+// Agregar película
+if (isset($_POST['agregar_pelicula'])) {
+    $stmt = $pdo->prepare("INSERT INTO películas (título, sinopsis, género, duración, clasificación_edad) VALUES (?, ?, ?, ?, ?)");
+    $stmt->execute([
+        $_POST['título'], $_POST['sinopsis'], $_POST['género'], $_POST['duración'], $_POST['clasificación_edad']
+    ]);
+    $msg = "🎬 Película agregada.";
+}
+
+// Agregar sesión
+if (isset($_POST['agregar_sesion'])) {
+    $stmt = $pdo->prepare("INSERT INTO sesiones (película_id, fecha, hora, sala_id) VALUES (?, ?, ?, ?)");
+    $stmt->execute([
+        $_POST['película_id'], $_POST['fecha'], $_POST['hora'], $_POST['sala_id']
+    ]);
+    $msg = "🕒 Sesión agregada.";
+}
+
+// Obtener datos para formularios
+$peliculas = $pdo->query("SELECT * FROM películas")->fetchAll();
+$salas = $pdo->query("SELECT * FROM salas")->fetchAll();
+$sesiones = $pdo->query("SELECT s.*, p.título FROM sesiones s JOIN películas p ON s.película_id = p.id")->fetchAll();
+?>
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <title>Panel Administrador</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <style>
+        body {
+            background-color: #f2f2f2;
+        }
+        .container {
+            background-color: #fff;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+        }
+        h2, h3 {
+            color: #d63031;
+            font-weight: bold;
+        }
+        .form-control, .form-select {
+            border-radius: 8px;
+        }
+        table th {
+            background-color: #ffeaa7;
+            color: #2d3436;
+        }
+        .btn-success {
+            background-color: #00b894;
+            border: none;
+        }
+        .btn-primary {
+            background-color: #0984e3;
+            border: none;
+        }
+        .btn-secondary {
+            background-color: #636e72;
+            border: none;
+        }
+    </style>
+</head>
+<body class="bg-light">
+<div class="container mt-4">
+    <h2 class="text-center mb-4">🎞️ Panel de Administración</h2>
+    
+    <?= $msg ? "<div class='alert alert-info text-center'>$msg</div>" : '' ?>
+
+    <h3>🎬 Agregar Película</h3>
+    <form method="POST" class="mb-4">
+        <input name="título" placeholder="Título" class="form-control mb-2" required>
+        <input name="sinopsis" placeholder="Sinopsis" class="form-control mb-2" required>
+        <input name="género" placeholder="Género" class="form-control mb-2" required>
+        <input type="number" name="duración" placeholder="Duración (minutos)" class="form-control mb-2" required>
+        <input name="clasificación_edad" placeholder="Clasificación Edad" class="form-control mb-2" required>
+        <button name="agregar_pelicula" class="btn btn-success">➕ Agregar Película</button>
+    </form>
+
+    <h3>🕒 Agregar Sesión</h3>
+    <form method="POST" class="mb-4">
+        <select name="película_id" class="form-select mb-2" required>
+            <option value="">Seleccione Película</option>
+            <?php foreach ($peliculas as $p): ?>
+                <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['título']) ?></option>
+            <?php endforeach; ?>
+        </select>
+        <input type="date" name="fecha" class="form-control mb-2" required>
+        <input type="time" name="hora" class="form-control mb-2" required>
+        <select name="sala_id" class="form-select mb-2" required>
+            <option value="">Seleccione Sala</option>
+            <?php foreach ($salas as $s): ?>
+                <option value="<?= $s['id'] ?>">Sala <?= $s['id'] ?> - Capacidad: <?= $s['capacidad'] ?></option>
+            <?php endforeach; ?>
+        </select>
+        <button name="agregar_sesion" class="btn btn-primary">📅 Agregar Sesión</button>
+    </form>
+
+    <h3>🎟️ Sesiones Actuales</h3>
+    <table class="table table-bordered table-hover bg-white">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Película</th>
+                <th>Fecha</th>
+                <th>Hora</th>
+                <th>Sala</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php if (!empty($sesiones)): ?>
+                <?php foreach ($sesiones as $s): ?>
+                    <tr>
+                        <td><?= $s['id'] ?></td>
+                        <td><?= htmlspecialchars($s['título']) ?></td>
+                        <td><?= $s['fecha'] ?></td>
+                        <td><?= substr($s['hora'], 0, 5) ?></td>
+                        <td><?= $s['sala_id'] ?></td>
+                    </tr>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <tr>
+                    <td colspan="5" class="text-center">No hay sesiones registradas.</td>
+                </tr>
+            <?php endif; ?>
+        </tbody>
+    </table>
+
+    <a href="index.php" class="btn btn-secondary mt-3">⏻ Cerrar Sesión</a>
+</div>
+</body>
+</html>
